@@ -1,1 +1,0 @@
-# Intelligent-LRT---React-Native-Mobile-App
