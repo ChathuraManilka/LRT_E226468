@@ -1,0 +1,583 @@
+# Intelligent LRT System - Comprehensive System Documentation
+
+## Table of Contents
+1. Introduction
+2. Entity-Relationship (ER) Diagram
+3. Class Diagram
+4. Use Case Diagrams
+5. Sequence Diagrams
+6. Flow Charts
+7. System Architecture Overview
+
+## 1. Introduction
+
+The Intelligent LRT (Light Rail Transit) system is a comprehensive mobile application built with React Native and Expo. It modernizes the railway experience in Sri Lanka by providing real-time train tracking, advanced scheduling, a seamless ticketing system with QR code integration, and an intelligent delay prediction module.
+
+The system supports three distinct user roles:
+- Regular Users: Passengers who can book tickets, track trains, and view schedules
+- Admins: Train conductors/managers who can update train status and locations
+- Super Admins: System administrators with oversight of the entire system
+
+## 2. Entity-Relationship (ER) Diagram
+
+```
++-------------+       +-------------+       +-------------+
+|    User     |       |    Ticket   |       |    Train    |
++-------------+       +-------------+       +-------------+
+| _id         |<----->| _id         |<----->| _id         |
+| name        |       | userId      |       | trainNumber |
+| email       |       | trainId     |       | name        |
+| role        |       | from        |       | type        |
+| password    |       | to          |       | capacity    |
+| createdAt   |       | date        |       | status      |
+| updatedAt   |       | departureTime|       | delayMinutes|
++-------------+       | seatNumbers  |       | routeId     |
+                      | status       |       | currentLoc  |
+                      | qrCodeValue  |       +-------------+
+                      | price        |             |
+                      | createdAt    |             |
+                      +-------------+             |
+                                                  |
++-------------+       +-------------+       +-------------+
+|   Station   |<----->|    Route    |<----->|  Schedule   |
++-------------+       +-------------+       +-------------+
+| _id         |       | _id         |       | _id         |
+| name        |       | name        |       | trainId     |
+| code        |       | stations    |       | dayType     |
+| coordinates |       | totalDistance|       | stops      |
+| stationType |       +-------------+       +-------------+
+| services    |
++-------------+
+
++-------------+       +-------------+
+|   Notice    |       | Prediction  |
++-------------+       +-------------+
+| _id         |       | _id         |
+| title       |       | trainId     |
+| content     |       | date        |
+| createdAt   |       | delayRisk   |
+| updatedAt   |       | factors     |
+| authorId    |       | prediction  |
++-------------+       +-------------+
+```
+
+### Entity Relationships:
+
+1. **User to Ticket**: One-to-Many (A user can have multiple tickets)
+2. **Train to Ticket**: One-to-Many (A train can have multiple tickets)
+3. **Route to Train**: One-to-Many (A route can have multiple trains)
+4. **Route to Station**: Many-to-Many (A route has multiple stations, and a station can be part of multiple routes)
+5. **Train to Schedule**: One-to-Many (A train can have multiple schedules for different day types)
+6. **Train to Prediction**: One-to-Many (A train can have multiple delay predictions)
+7. **User to Notice**: One-to-Many (A user/admin can create multiple notices)
+
+## 3. Class Diagram
+
+```
++------------------------+        +------------------------+
+|         User           |        |        Train           |
++------------------------+        +------------------------+
+| -id: String            |        | -id: String            |
+| -name: String          |        | -trainNumber: String   |
+| -email: String         |        | -name: String          |
+| -role: String          |        | -type: String          |
+| -password: String      |        | -capacity: Number      |
+| -createdAt: Date       |        | -currentLocation: Object|
+| -updatedAt: Date       |        | -status: String        |
++------------------------+        | -delayMinutes: Number  |
+| +authenticate(): Boolean|        | -route: ObjectId      |
+| +getProfile(): Object   |        +------------------------+
+| +updateProfile(): Boolean|       | +updateLocation(): void |
++------------------------+        | +updateStatus(): void   |
+                                  | +getDetails(): Object   |
+                                  +------------------------+
+                                           ^
+                                           |
+                                  +------------------------+
+                                  |     TrainService       |
+                                  +------------------------+
+                                  | +getTrainDetails()     |
+                                  | +updateTrainLocation() |
+                                  | +getTrainsWithLocations()|
+                                  +------------------------+
+
++------------------------+        +------------------------+
+|       Station          |        |        Route           |
++------------------------+        +------------------------+
+| -id: String            |        | -id: String            |
+| -name: String          |        | -name: String          |
+| -code: String          |        | -stations: Array       |
+| -coordinates: Object   |        | -totalDistance: Number |
+| -stationType: String   |        +------------------------+
+| -services: Object      |        | +getStations(): Array  |
++------------------------+        | +calculateDistance()   |
+| +getCoordinates()      |        +------------------------+
+| +getServices()         |
++------------------------+
+
++------------------------+        +------------------------+
+|       Schedule         |        |       Ticket           |
++------------------------+        +------------------------+
+| -id: String            |        | -id: String            |
+| -train: ObjectId       |        | -userId: ObjectId      |
+| -dayType: String       |        | -trainId: ObjectId     |
+| -stops: Array          |        | -from: String          |
++------------------------+        | -to: String            |
+| +getStopTimes(): Array |        | -date: Date            |
+| +updateSchedule(): void|        | -departureTime: String |
++------------------------+        | -seatNumbers: Array    |
+                                  | -status: String        |
+                                  | -qrCodeValue: String   |
+                                  | -price: Number         |
+                                  | -createdAt: Date       |
++------------------------+        +------------------------+
+|     Prediction         |        | +generateQR(): String  |
++------------------------+        | +validateTicket(): Bool|
+| -id: String            |        +------------------------+
+| -trainId: ObjectId     |
+| -date: Date            |
+| -delayRisk: String     |
+| -factors: Array        |
+| -prediction: Number    |
++------------------------+
+| +calculateRisk(): String|
+| +getPrediction(): Number|
++------------------------+
+```
+
+## 4. Use Case Diagrams
+
+### 4.1 Regular User Use Cases
+
+```
++-------------------------------------------------------------+
+|                     Intelligent LRT System                   |
++-------------------------------------------------------------+
+|                                                             |
+|  +----------+                                               |
+|  |          |                                               |
+|  |  User    |                                               |
+|  |          |                                               |
+|  +----------+                                               |
+|       |                                                     |
+|       |----> Login/Register                                 |
+|       |                                                     |
+|       |----> View Train Schedules                           |
+|       |                                                     |
+|       |----> Search Available Trains                        |
+|       |                                                     |
+|       |----> Book Tickets                                   |
+|       |                                                     |
+|       |----> View Booked Tickets                            |
+|       |                                                     |
+|       |----> Track Trains in Real-time                      |
+|       |                                                     |
+|       |----> View Delays                         |
+|       |                                                     |
+|       |----> View Notices & Updates                         |
+|       |                                                     |
+|       |----> Toggle Theme (Light/Dark)                      |
+|       |                                                     |
+|       |----> Logout                                         |
+|                                                             |
++-------------------------------------------------------------+
+```
+
+### 4.2 Admin Use Cases
+
+```
++-------------------------------------------------------------+
+|                     Intelligent LRT System                   |
++-------------------------------------------------------------+
+|                                                             |
+|  +----------+                                               |
+|  |          |                                               |
+|  |  Admin   |                                               |
+|  |          |                                               |
+|  +----------+                                               |
+|       |                                                     |
+|       |----> Login                                          |
+|       |                                                     |
+|       |----> View Assigned Trains                           |
+|       |                                                     |
+|       |----> Update Train Status (On Time/Delayed)          |
+|       |                                                     |
+|       |----> Mark Train at Station                          |
+|       |                                                     |
+|       |----> Track Trains in Real-time                      |
+|       |                                                     |
+|       |----> Manage Station Information                     |
+|       |                                                     |
+|       |----> Toggle Theme (Light/Dark)                      |
+|       |                                                     |
+|       |----> Logout                                         |
+|                                                             |
++-------------------------------------------------------------+
+```
+
+### 4.3 Super Admin Use Cases
+
+```
++-------------------------------------------------------------+
+|                     Intelligent LRT System                   |
++-------------------------------------------------------------+
+|                                                             |
+|  +-------------+                                            |
+|  |             |                                            |
+|  | Super Admin |                                            |
+|  |             |                                            |
+|  +-------------+                                            |
+|       |                                                     |
+|       |----> Login                                          |
+|       |                                                     |
+|       |----> System Overview Dashboard                      |
+|       |                                                     |
+|       |----> Manage Trains                                  |
+|       |                                                     |
+|       |----> Manage Train Schedules                         |
+|       |                                                     |
+|       |----> Manage Notices                                 |
+|       |                                                     |
+|       |----> View System Analytics (Future Updates)                         |
+|       |                                                     |
+|       |----> Manage Users                                   |
+|       |                                                     |
+|       |----> Delay System              |
+|       |                                                     |
+|       |----> Toggle Theme (Light/Dark)                      |
+|       |                                                     |
+|       |----> Logout                                         |
+|                                                             |
++-------------------------------------------------------------+
+```
+
+## 5. Sequence Diagrams
+
+### 5.1 User Authentication Sequence
+
+```
++--------+          +------------+          +---------+          +--------+
+|  User  |          |    App     |          |  Redux  |          |  API   |
++--------+          +------------+          +---------+          +--------+
+    |                     |                      |                   |
+    | Enter Credentials   |                      |                   |
+    |-------------------->|                      |                   |
+    |                     |                      |                   |
+    |                     | Dispatch Login Action|                   |
+    |                     |--------------------->|                   |
+    |                     |                      |                   |
+    |                     |                      | API Login Request |
+    |                     |                      |------------------>|
+    |                     |                      |                   |
+    |                     |                      |                   |
+    |                     |                      | Return Token+Role |
+    |                     |                      |<------------------|
+    |                     |                      |                   |
+    |                     | Update Auth State    |                   |
+    |                     |<---------------------|                   |
+    |                     |                      |                   |
+    | Redirect to Dashboard                      |                   |
+    |<--------------------|                      |                   |
+    |                     |                      |                   |
+```
+
+### 5.2 Ticket Booking Sequence
+
+```
++--------+          +------------+          +---------+          +--------+
+|  User  |          |    App     |          |  Redux  |          |  API   |
++--------+          +------------+          +---------+          +--------+
+    |                     |                      |                   |
+    | Select Route        |                      |                   |
+    |-------------------->|                      |                   |
+    |                     |                      |                   |
+    | Select Train        |                      |                   |
+    |-------------------->|                      |                   |
+    |                     |                      |                   |
+    | Select Date/Time    |                      |                   |
+    |-------------------->|                      |                   |
+    |                     |                      |                   |
+    | Enter Passenger Info|                      |                   |
+    |-------------------->|                      |                   |
+    |                     |                      |                   |
+    | Confirm Booking     |                      |                   |
+    |-------------------->|                      |                   |
+    |                     | Dispatch Book Action |                   |
+    |                     |--------------------->|                   |
+    |                     |                      |                   |
+    |                     |                      | API Book Request  |
+    |                     |                      |------------------>|
+    |                     |                      |                   |
+    |                     |                      | Return Ticket Data|
+    |                     |                      |<------------------|
+    |                     |                      |                   |
+    |                     | Update Tickets State |                   |
+    |                     |<---------------------|                   |
+    |                     |                      |                   |
+    | Show Ticket with QR |                      |                   |
+    |<--------------------|                      |                   |
+    |                     |                      |                   |
+```
+
+### 5.3 Train Tracking Sequence
+
+```
++--------+          +------------+          +---------+          +--------+
+|  User  |          |    App     |          | Service |          |  API   |
++--------+          +------------+          +---------+          +--------+
+    |                     |                      |                   |
+    | Open Tracking Screen|                      |                   |
+    |-------------------->|                      |                   |
+    |                     |                      |                   |
+    |                     | Request Train Data   |                   |
+    |                     |--------------------->|                   |
+    |                     |                      |                   |
+    |                     |                      | API Location Req  |
+    |                     |                      |------------------>|
+    |                     |                      |                   |
+    |                     |                      | Return Locations  |
+    |                     |                      |<------------------|
+    |                     |                      |                   |
+    |                     | Return Train Data    |                   |
+    |                     |<---------------------|                   |
+    |                     |                      |                   |
+    | Display Map with    |                      |                   |
+    | Train Locations     |                      |                   |
+    |<--------------------|                      |                   |
+    |                     |                      |                   |
+    |                     |                      |                   |
+    |                     | Start Realtime Updates                   |
+    |                     |--------------------->|                   |
+    |                     |                      |                   |
+    |                     |                      | Subscribe to Updates
+    |                     |                      |------------------>|
+    |                     |                      |                   |
+    |                     |                      | Location Update   |
+    |                     |                      |<------------------|
+    |                     |                      |                   |
+    |                     | Update Map Markers   |                   |
+    |                     |<---------------------|                   |
+    |                     |                      |                   |
+    | See Updated         |                      |                   |
+    | Train Positions     |                      |                   |
+    |<--------------------|                      |                   |
+    |                     |                      |                   |
+```
+
+### 5.4 Admin Train Status Update Sequence
+
+```
++--------+          +------------+          +---------+          +--------+
+|  Admin |          |    App     |          | Service |          |  API   |
++--------+          +------------+          +---------+          +--------+
+    |                     |                      |                   |
+    | Select Train        |                      |                   |
+    |-------------------->|                      |                   |
+    |                     |                      |                   |
+    | Update Status       |                      |                   |
+    | (On Time/Delayed)   |                      |                   |
+    |-------------------->|                      |                   |
+    |                     |                      |                   |
+    |                     | Update Train Status  |                   |
+    |                     |--------------------->|                   |
+    |                     |                      |                   |
+    |                     |                      | API Status Update |
+    |                     |                      |------------------>|
+    |                     |                      |                   |
+    |                     |                      | Confirm Update    |
+    |                     |                      |<------------------|
+    |                     |                      |                   |
+    |                     | Update UI            |                   |
+    |                     |<---------------------|                   |
+    |                     |                      |                   |
+    | See Updated Status  |                      |                   |
+    |<--------------------|                      |                   |
+    |                     |                      |                   |
+```
+
+## 6. Flow Charts
+
+### 6.1 User Authentication Flow
+
+```
++----------------+     +----------------+     +----------------+
+|                |     |                |     |                |
+|  Start App     |---->|  Login Screen  |---->| Enter Credentials|
+|                |     |                |     |                |
++----------------+     +----------------+     +----------------+
+                                                     |
+                                                     v
++----------------+     +----------------+     +----------------+
+|                |     |                |     |                |
+|  User Dashboard |<----| Auth Success?  |<----| Validate Login |
+|                |     |                |     |                |
++----------------+     +----------------+     +----------------+
+                            |
+                            | No
+                            v
+                       +----------------+
+                       |                |
+                       | Show Error     |
+                       |                |
+                       +----------------+
+```
+
+### 6.2 Ticket Booking Flow
+
+```
++----------------+     +----------------+     +----------------+
+|                |     |                |     |                |
+| User Dashboard |---->| Available      |---->| Select Train   |
+|                |     | Trains Screen  |     |                |
++----------------+     +----------------+     +----------------+
+                                                     |
+                                                     v
++----------------+     +----------------+     +----------------+
+|                |     |                |     |                |
+| Payment Screen |<----| Select Seats   |<----| Enter Journey  |
+|                |     |                |     | Details        |
++----------------+     +----------------+     +----------------+
+      |
+      v
++----------------+     +----------------+     +----------------+
+|                |     |                |     |                |
+| Process Payment|---->| Generate Ticket|---->| Display Ticket |
+|                |     | with QR Code   |     | with QR Code   |
++----------------+     +----------------+     +----------------+
+```
+
+### 6.3 Train Tracking Flow
+
+```
++----------------+     +----------------+     +----------------+
+|                |     |                |     |                |
+| User Dashboard |---->| Tracking Screen|---->| Load Map       |
+|                |     |                |     |                |
++----------------+     +----------------+     +----------------+
+                                                     |
+                                                     v
++----------------+     +----------------+     +----------------+
+|                |     |                |     |                |
+| Display Trains |<----| Fetch Train    |<----| Fetch Station  |
+| on Map         |     | Locations      |     | Locations      |
++----------------+     +----------------+     +----------------+
+      |
+      v
++----------------+     +----------------+
+|                |     |                |
+| Select Train   |---->| Show Train     |
+|                |     | Details        |
++----------------+     +----------------+
+```
+
+### 6.4 Admin Train Management Flow
+
+```
++----------------+     +----------------+     +----------------+
+|                |     |                |     |                |
+| Admin Dashboard|---->| View Assigned  |---->| Select Train   |
+|                |     | Trains         |     |                |
++----------------+     +----------------+     +----------------+
+                                                     |
+                                                     v
++----------------+     +----------------+     +----------------+
+|                |     |                |     |                |
+| Update Train   |---->| Mark Train at  |---->| Update Train   |
+| Status         |     | Station        |     | Location       |
++----------------+     +----------------+     +----------------+
+      |
+      v
++----------------+     +----------------+
+|                |     |                |
+| Save Changes   |---->| Notify System  |
+|                |     |                |
++----------------+     +----------------+
+```
+
+## 7. System Architecture Overview
+
+The Intelligent LRT system follows a modern mobile application architecture with the following key components:
+
+### 7.1 Frontend Architecture (React Native)
+
+```
++-------------------------------------------------------------+
+|                     React Native App                         |
++-------------------------------------------------------------+
+|                                                             |
+|  +----------------+        +----------------+               |
+|  |                |        |                |               |
+|  |  UI Components |        |  Navigation    |               |
+|  |                |        |                |               |
+|  +----------------+        +----------------+               |
+|                                                             |
+|  +----------------+        +----------------+               |
+|  |                |        |                |               |
+|  |  Redux Store   |<------>|  API Services  |               |
+|  |                |        |                |               |
+|  +----------------+        +----------------+               |
+|                                                             |
+|  +----------------+        +----------------+               |
+|  |                |        |                |               |
+|  |  Context API   |        |  Utilities     |               |
+|  | (Theme, Auth)  |        |                |               |
+|  +----------------+        +----------------+               |
+|                                                             |
++-------------------------------------------------------------+
+                           |
+                           v
++-------------------------------------------------------------+
+|                       Backend API                            |
++-------------------------------------------------------------+
+|                                                             |
+|  +----------------+        +----------------+               |
+|  |                |        |                |               |
+|  |  Express.js    |        |  MongoDB       |               |
+|  |  REST API      |<------>|  Database      |               |
+|  |                |        |                |               |
+|  +----------------+        +----------------+               |
+|                                                             |
+|  +----------------+        +----------------+               |
+|  |                |        |                |               |
+|  |  Authentication|        |  Real-time     |               |
+|  |  Services      |        |  Updates       |               |
+|  +----------------+        +----------------+               |
+|                                                             |
++-------------------------------------------------------------+
+```
+
+### 7.2 Data Flow Architecture
+
+```
++-------------+     +-------------+     +-------------+
+|             |     |             |     |             |
+|  User       |---->|  UI         |---->|  Redux      |
+|  Interaction|     |  Components |     |  Actions    |
+|             |     |             |     |             |
++-------------+     +-------------+     +-------------+
+                                              |
+                                              v
++-------------+     +-------------+     +-------------+
+|             |     |             |     |             |
+|  UI Update  |<----|  Redux      |<----|  API        |
+|             |     |  Store      |     |  Services   |
+|             |     |             |     |             |
++-------------+     +-------------+     +-------------+
+                                              |
+                                              v
+                                        +-------------+
+                                        |             |
+                                        |  Backend    |
+                                        |  API        |
+                                        |             |
+                                        +-------------+
+                                              |
+                                              v
+                                        +-------------+
+                                        |             |
+                                        |  Database   |
+                                        |             |
+                                        +-------------+
+```
+
+
